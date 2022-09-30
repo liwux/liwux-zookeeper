@@ -4,6 +4,7 @@ import org.apache.zookeeper.*;
 import org.apache.zookeeper.data.Stat;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 
 /**
@@ -19,12 +20,13 @@ public class App
         //zk 是有session概念的，没有线程池的概念
         //watch注册值只发生在 读类型调用：get,exist......
         //第一类，new zk时候，传入 watch,这个watch和session有关系，和path、node没有关系
-        ZooKeeper connected = new ZooKeeper("192.168.1.11:2181,192.168.1.12:2181,192.168.1.13:2181,192.168.1.14:2181",
+        final ZooKeeper connected = new ZooKeeper("192.168.1.11:2181,192.168.1.12:2181,192.168.1.13:2181,192.168.1.14:2181",
                 3000, new Watcher() {
             public void process(WatchedEvent event) {
                 Event.KeeperState state = event.getState();
                 Event.EventType type = event.getType();
                 String path = event.getPath();
+                System.out.println("new zk watch:"+event.toString());
                 switch (state) {
                     case Unknown:
                         break;
@@ -93,20 +95,38 @@ public class App
 
         String pathName = connected.create("/ooxx", "olddata".getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
 
-        Stat stat = new Stat();
+        final Stat stat = new Stat();
 
         byte[] node = connected.getData("/ooxx", new Watcher() {
             public void process(WatchedEvent event) {
                 System.out.println("getData watch:"+event.toString());
+                try {
+                    connected.getData("/ooxx",this,stat);
+                } catch (KeeperException e) {
+                    throw new RuntimeException(e);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
             }
         }, stat);
 
-        System.out.println(new String(node));
+        System.out.println(node.toString());
+
+
 
 
 
         // 触发回调
         Stat stat1 = connected.setData("/ooxx", "newdata1".getBytes(), 0);
         Stat stat2 = connected.setData("/ooxx", "newdata2".getBytes(), stat1.getVersion());
+
+        connected.getData("/ooxx", false, new AsyncCallback.DataCallback() {
+            public void processResult(int i, java.lang.String s, Object o, byte[] bytes, Stat stat) {
+                System.out.println("-----------async call back-------------------");
+                System.out.println(o.toString());
+                System.out.println(new String(bytes));
+            }
+        },"abc");
+        System.out.println("----------async over-------------");
     }
 }
