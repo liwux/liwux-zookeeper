@@ -4,6 +4,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 public class TestConfig {
@@ -15,6 +16,8 @@ public class TestConfig {
         try {
             zooKeeper = ZKUtils.getZooKeeper();
         } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
